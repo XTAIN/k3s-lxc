@@ -1,3 +1,5 @@
+#!/bin/bash
+
 
 worker=${worker:-0}
 mgmt=${mgmt:-0}
@@ -19,12 +21,21 @@ fi
 
 default_prefix="node"
 if [ "${worker}" == "1" ] && [ "${mgmt}" == "1" ]; then
+  cores=${cores:-4}
+  memory=${memory:-8192}
+  swap=${swap:-4096}
   default_prefix="node"
 else
   if [ "${worker}" == "1" ]; then
     default_prefix="worker"
+    cores=${cores:-4}
+    memory=${memory:-8192}
+    swap=${swap:-4096}
   else
     default_prefix="mgmt"
+     cores=${cores:-2}
+     memory=${memory:-4096}
+     swap=${swap:-2048}
   fi
 fi
 
@@ -49,6 +60,8 @@ default_id=$(pvesh get /cluster/nextid)
 default_bridge=vmbr40
 default_rancher=https://k8s.${default_domain}
 firewall=${firewall:-0}
+size=${size:-64}
+nameserver=${nameserver:-8.8.8.8}
 
 if [ -z "${token}" ]; then
   echo "Need token"
@@ -73,7 +86,7 @@ if [[ ${ip} =~ ^[0-9]+$ ]]; then
   ip_hex=$(printf '%x' ${ip})
   ip_internal="10.128.0.${ip}"
   ip="185.186.24.${ip}"
-  ip6="2a0b:6c80:101:326::b9ba:18${ip_hex}/32,gw=2a0b:6c80::1"
+  ip6="2a0b:6c80:101:326::b9ba:18${ip_hex}/32,gw6=2a0b:6c80::1"
   ip_internal="${ip_internal}/8"
   ip="${ip}/24,gw=185.186.24.1"
 fi
@@ -106,7 +119,35 @@ if [ -z "${id}" ]; then
   id=${default_id}
 fi
 
-pct create $id $image_storage:vztmpl/$image --cores 2 --memory 4096 --swap 2048 --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
+cat > /etc/modules-load.d/docker.conf <<EOF
+aufs
+overlay
+ip_vs
+ip_vs_rr
+ip_vs_wrr
+ip_vs_sh
+nf_conntrack
+br_netfilter
+rbd
+options nf_conntrack hashsize=196608
+EOF
+
+cat > /etc/sysctl.d/100-docker.conf  <<EOF
+net.netfilter.nf_conntrack_max=786432
+EOF
+
+sysctl net.netfilter.nf_conntrack_max=786432
+
+while read p; do
+  modprobe "$p"
+done </etc/modules-load.d/docker.conf
+
+if pct status $id || qm status $id; then
+   echo "VM with $id already exists." > /dev/stderr
+   exit 1
+fi
+
+pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --nameserver=${nameserver} --hostname=$hostname --onboot 1
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
@@ -154,4 +195,4 @@ pct exec $id -- systemctl enable k3s-lxc.service
 pct exec $id -- systemctl start k3s-lxc.service
 pct exec $id -- apt-get update
 pct exec $id -- apt-get install -y curl
-pct exec $id -- curl -fL ${rancher}/system-agent-install.sh | sudo  sh -s - --server ${rancher} --label 'cattle.io/os=linux' --token ${token} ${roles}
+pct exec $id -- curl -fL ${rancher}/system-agent-install.sh | sh -s - --server ${rancher} --label 'cattle.io/os=linux' --token ${token} ${roles}
