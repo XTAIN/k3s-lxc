@@ -47,7 +47,7 @@ default_node="${default_prefix}-$(openssl rand -hex 3)"
 host_ip_addr=$(hostname -I | awk '{print $1}')
 default_storage=$(pvesm status --content rootdir | grep active | cut -d' ' -f1 | head -n1)
 image_storage=local-btrfs
-image=$(ls /var/lib/pve/local-btrfs/template/cache/ | grep "ubuntu-" | head -n1)
+image=$(ls /var/lib/pve/local-btrfs/template/cache/ | grep "ubuntu-" | sort -r | head -n1)
 
 if [ -z "${image}" ]; then
   echo "no image found";
