@@ -35,6 +35,14 @@ fi
 default_node="${default_prefix}-$(openssl rand -hex 3)"
 host_ip_addr=$(hostname -I | awk '{print $1}')
 default_storage=$(pvesm status --content rootdir | grep active | cut -d' ' -f1 | head -n1)
+image_storage=local-btrfs
+image=$(ls /var/lib/pve/local-btrfs/template/cache/ | grep "ubuntu-" | head -n1)
+
+if [ -z "${image}" ]; then
+  echo "no image found";
+  exit 1
+fi
+
 default_hostname=${default_node}.${cluster}.k8s.${default_domain}
 default_id=$(pvesh get /cluster/nextid)
 #default_bridge=$(brctl show | awk 'NR>1 {print $1}' | grep vmbr | head -n1)
@@ -98,7 +106,7 @@ if [ -z "${id}" ]; then
   id=${default_id}
 fi
 
-pct create $id $storage:vztmpl/$image --cores 2 --memory 4096 --swap 2048 --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
+pct create $id $image_storage:vztmpl/$image --cores 2 --memory 4096 --swap 2048 --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
