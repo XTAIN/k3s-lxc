@@ -1,4 +1,12 @@
 
+worker=${worker:-0}
+mgmt=${mgmt:-0}
+
+if [ "${worker}" == "0" ] && [ "${mgmt}" == "0" ]; then
+  worker=1
+  mgmt=1
+fi
+
 roles=""
 
 if [ "${worker}" == "1" ]; then
@@ -8,9 +16,6 @@ fi
 if [ "${mgmt}" == "1" ]; then
   roles="${roles} --etcd --controlplane"
 fi
-
-worker=${worker:-1}
-mgmt=${mgmt:-1}
 
 default_prefix="node"
 if [ "${worker}" == "1" ] && [ "${mgmt}" == "1" ]; then
@@ -23,19 +28,27 @@ else
   fi
 fi
 
+default_domain=$(hostname -d)
+if [ -z "${default_domain}" ]; then
+  default_domain=xtain.net
+fi
 default_node="${default_prefix}-$(openssl rand -hex 3)"
 host_ip_addr=$(hostname -I | awk '{print $1}')
-default_storage=$(pvesm status --content rootdir | grep active | cut -d' ' -f1)
-default_hostname=${default_node}.k8s.$(hostname -d)
+default_storage=$(pvesm status --content rootdir | grep active | cut -d' ' -f1 | head -n1)
+default_hostname=${default_node}.${cluster}.k8s.${default_domain}
 default_id=$(pvesh get /cluster/nextid)
-default_bridge=$(brctl show | awk 'NR>1 {print $1}' | grep vmbr | head -n1)
+#default_bridge=$(brctl show | awk 'NR>1 {print $1}' | grep vmbr | head -n1)
 default_bridge=vmbr40
-default_rancher=https://k8s.$(hostname -d)
-firewall=${firewall:-1}
-
+default_rancher=https://k8s.${default_domain}
+firewall=${firewall:-0}
 
 if [ -z "${token}" ]; then
   echo "Need token"
+  exit 1
+fi
+
+if [ -z "${cluster}" ]; then
+  echo "Need cluster"
   exit 1
 fi
 
@@ -46,6 +59,16 @@ fi
 ip=${ip:-dhcp}
 ip6=${ip6:-}
 default_network="name=eth0,firewall=${firewall},bridge=${bridge}"
+default_network_internal="name=eth1,firewall=${firewall},bridge=${bridge}"
+
+if [[ ${ip} =~ ^[0-9]+$ ]]; then
+  ip_hex=$(printf '%x' ${ip})
+  ip_internal="10.128.0.${ip}"
+  ip="185.186.24.${ip}"
+  ip6="2a0b:6c80:101:326::b9ba:18${ip_hex}/32,gw=2a0b:6c80::1"
+  ip_internal="${ip_internal}/8"
+  ip="${ip}/24,gw=185.186.24.1"
+fi
 
 if [ "${ip}" ]; then
   default_network="${default_network},ip=${ip}"
@@ -54,6 +77,11 @@ fi
 if [ "${ip6}" ]; then
   default_network="${default_network},ip6=${ip6}"
 fi
+
+if [ "${ip_internal}" ]; then
+  network_internal="${default_network_internal},ip=${ip_internal}"
+fi
+
 if [ -z "${rancher}" ]; then
   rancher=${default_rancher}
 fi
@@ -80,6 +108,11 @@ EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
 pct start $id
 pct set $id --net0 $network
+
+if [ "${network_internal}" ]; then
+  pct set $id --net1 $network_internal
+fi
+
 pct exec $id -- mkdir -p /var/lib/rancher/k3s/server/manifests
 pct exec $id -- mkdir -p /etc/rancher/k3s
 (cat <<EOF
