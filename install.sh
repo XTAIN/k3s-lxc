@@ -193,6 +193,6 @@ EOF
 pct exec $id -- systemctl daemon-reload
 pct exec $id -- systemctl enable k3s-lxc.service
 pct exec $id -- systemctl start k3s-lxc.service
-pct exec $id -- apt-get upadte
+pct exec $id -- apt-get update
 pct exec $id -- apt-get install -y curl
 pct exec $id -- curl -fL ${rancher}/system-agent-install.sh | pct exec $id -- sh -s - --server ${rancher} --label 'cattle.io/os=linux' --token ${token} ${roles}
