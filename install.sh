@@ -61,7 +61,7 @@ default_bridge=vmbr40
 default_rancher=https://k8s.${default_domain}
 firewall=${firewall:-0}
 size=${size:-64}
-nameserver=${nameserver:-8.8.8.8}
+nameserver=${nameserver:-1.1.1.1}
 
 if [ -z "${token}" ]; then
   echo "Need token"
@@ -147,7 +147,7 @@ if pct status $id || qm status $id; then
    exit 1
 fi
 
-pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --nameserver=${nameserver} --hostname=$hostname --onboot 1
+pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
@@ -155,12 +155,15 @@ lxc.cap.drop:
 lxc.mount.auto: "proc:rw sys:rw"
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
-pct start $id
 pct set $id --net0 $network
+if [ "$nameserver" ]; then
+  pct set $id --nameserver $nameserver
+fi
 
 if [ "${network_internal}" ]; then
   pct set $id --net1 $network_internal
 fi
+pct start $id
 
 pct exec $id -- mkdir -p /var/lib/rancher/k3s/server/manifests
 pct exec $id -- mkdir -p /etc/rancher/k3s
