@@ -61,7 +61,7 @@ default_bridge=vmbr40
 default_rancher=https://k8s.${default_domain}
 firewall=${firewall:-0}
 size=${size:-64}
-nameserver=${nameserver:-1.1.1.1}
+nameserver=${nameserver:-8.8.8.8}
 
 if [ -z "${token}" ]; then
   echo "Need token"
