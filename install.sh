@@ -193,6 +193,14 @@ Environment=
 WantedBy=multi-user.target
 EOF
 ) | pct exec $id -- tee /etc/systemd/system/k3s-lxc.service
+(cat <<EOF
+export PATH="/var/lib/rancher/rke2/bin/:$PATH"
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+export CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml
+
+alias ctr="/var/lib/rancher/rke2/bin/ctr --address /run/k3s/containerd/containerd.sock"
+EOF
+) | pct exec $id -- tee /etc/bash.bashrc
 pct exec $id -- systemctl daemon-reload
 pct exec $id -- systemctl enable k3s-lxc.service
 pct exec $id -- systemctl start k3s-lxc.service
