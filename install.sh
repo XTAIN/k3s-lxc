@@ -155,6 +155,24 @@ lxc.cap.drop:
 lxc.mount.auto: "proc:rw sys:rw"
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
+
+if [ $ceph == 1 ]; then
+  (cat <<EOF
+lxc.cgroup2.devices.allow: b 7:* rwm
+lxc.cgroup2.devices.allow: c 10:237 rwm
+lxc.mount.entry: /dev/loop-control dev/loop-control none bind,create=file 0 0
+lxc.mount.entry = /dev/loop0 dev/loop0 none bind,create=file 0 0
+EOF
+) | cat - >> /etc/pve/lxc/$id.conf
+  END=254
+  for ((i=0;i<=END;i++)); do
+      (cat <<EOF
+lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
+EOF
+) | cat - >> /etc/pve/lxc/$id.conf
+  done
+fi
+
 pct set $id --net0 $network
 if [ "$nameserver" ]; then
   pct set $id --nameserver $nameserver
