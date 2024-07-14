@@ -177,7 +177,7 @@ lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
   done
-  pct set $id -mp0 local:$loop_disk_size,mp=/var/loop-disk,backup=1
+  pct set $id -mp0 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
   (cat <<EOF
 #!/bin/bash
 
