@@ -164,7 +164,7 @@ lxc.mount.entry: /dev/loop-control dev/loop-control none bind,create=file 0 0
 lxc.mount.entry = /dev/loop0 dev/loop0 none bind,create=file 0 0
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
-  END=254
+  END=256
   for ((i=0;i<=END;i++)); do
       (cat <<EOF
 lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
