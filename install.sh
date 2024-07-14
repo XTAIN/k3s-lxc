@@ -202,7 +202,7 @@ if [ "$loop_disk" ]; then
 
 # Pfade zur Datei und zum Symlink
 file="/var/loop-disk/image.raw"
-link_path="/var/tmp/loop-disk"
+link_path="/var/run/loop-disk"
 
 # Verzeichnisse der Datei und des Symlinks
 file_dir=\$(dirname "\$file")
