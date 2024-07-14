@@ -122,11 +122,11 @@ if [ -z "${id}" ]; then
 fi
 
 if [ -z "${loop_disk_storage}" ]; then
-  loop_disk_storage=${image_storage}
+  loop_disk_storage=${storage}
 fi
 
 if [ -z "${data_storage}" ]; then
-  data_storage=${loop_disk_storage}
+  data_storage=${storage}
 fi
 
 cat > /etc/modules-load.d/docker.conf <<EOF
