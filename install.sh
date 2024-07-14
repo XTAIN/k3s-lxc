@@ -157,6 +157,7 @@ EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
 
 if [ $ceph == 1 ]; then
+  for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
   (cat <<EOF
 lxc.cgroup2.devices.allow: b 7:* rwm
 lxc.cgroup2.devices.allow: c 10:237 rwm
