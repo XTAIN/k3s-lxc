@@ -174,6 +174,91 @@ EOF
   done
 
   (cat <<EOF
+#!/bin/bash
+
+# Pfade zur Datei und zum Symlink
+file="/var/loop-disk/image.raw"
+link_path="/var/tmp/loop-disk"
+
+# Verzeichnisse der Datei und des Symlinks
+file_dir=\$(dirname "\$file")
+link_dir=\$(dirname "\$link_path")
+
+# Überprüfen und ggf. Erstellen des Verzeichnisses der Datei
+if [ ! -d "\$file_dir" ]; then
+    mkdir -p "\$file_dir"
+    if [ \$? -ne 0 ]; then
+        echo "Fehler beim Erstellen des Verzeichnisses \$file_dir."
+        exit 1
+    fi
+    echo "Verzeichnis \$file_dir wurde erstellt."
+fi
+
+# Überprüfen und ggf. Erstellen des Verzeichnisses des Symlinks
+if [ ! -d "\$link_dir" ]; then
+    mkdir -p "\$link_dir"
+    if [ \$? -ne 0 ]; then
+        echo "Fehler beim Erstellen des Verzeichnisses \$link_dir."
+        exit 1
+    fi
+    echo "Verzeichnis \$link_dir wurde erstellt."
+fi
+
+# Überprüfen, ob die Datei existiert
+if [ ! -f "\$file" ]; then
+    # Überprüfen, ob das Verzeichnis als separates Dateisystem gemountet ist
+    mount_point=\$(findmnt -n -o TARGET --target "\$file_dir")
+    if [ "\$mount_point" == "/" ]; then
+        echo "Verzeichnis \$file_dir ist Teil des Root-Dateisystems."
+        exit 1
+    fi
+
+    echo "Datei \$file existiert nicht. Erstelle eine neue Datei."
+
+    # Freien Speicherplatz im Verzeichnis ermitteln
+    free_space=\$(df --output=avail "\$file_dir" | tail -n 1)
+    # 95% des freien Speicherplatzes berechnen (in 1K-Blöcken)
+    file_size=\$((free_space * 95 / 100))
+    
+    # Datei mit der berechneten Größe erstellen
+    truncate -s "\${file_size}K" "\$file"
+    if [ \$? -ne 0 ]; then
+        echo "Fehler beim Erstellen der Datei \$file."
+        exit 1
+    fi
+    echo "Datei \$file wurde mit der Größe von 95% des freien Speicherplatzes erstellt."
+fi
+
+# Überprüfen, ob die Datei bereits einem Loop-Device zugeordnet ist
+loop_device=\$(losetup -j "\$file" | awk -F: '{print \$1}')
+
+# Wenn die Datei noch keinem Loop-Device zugeordnet ist, ein neues Loop-Device erstellen
+if [ -z "\$loop_device" ]; then
+    loop_device=\$(losetup -f)
+    losetup "\$loop_device" "\$file"
+    # Überprüfen, ob die Verbindung erfolgreich war
+    if [ \$? -ne 0 ]; then
+        echo "Fehler beim Verbinden von \$file als Loop-Device."
+        exit 1
+    fi
+    echo "Datei \$file wurde als \$loop_device verbunden."
+else
+    echo "Datei \$file ist bereits als \$loop_device verbunden."
+fi
+
+# Symlink erstellen oder aktualisieren
+if [ -L "\$link_path" ]; then
+    current_target=\$(readlink "\$link_path")
+    if [ "\$current_target" != "\$loop_device" ]; then
+        ln -sf "\$loop_device" "\$link_path"
+        echo "Symlink \$link_path wurde aktualisiert und zeigt jetzt auf \$loop_device."
+    else
+        echo "Symlink \$link_path zeigt bereits auf \$loop_device."
+    fi
+else
+    ln -sf "\$loop_device" "\$link_path"
+    echo "Symlink \$link_path wurde erstellt und zeigt auf \$loop_device."
+fi
 EOF
 ) | pct exec $id -- tee /usr/local/bin/loop-disk
   pct exec $id -- chmod +x /usr/local/bin/loop-disk
