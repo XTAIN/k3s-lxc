@@ -160,7 +160,7 @@ lxc.cap.drop:
 lxc.mount.auto: "proc:rw sys:rw"
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
-if [ $loop_disk == 1 ]; then
+if [ "$loop_disk" ]; then
   for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
   pct set $id -mp0 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
     (cat <<EOF
@@ -190,7 +190,7 @@ fi
 pct start $id
 
 
-if [ $loop_disk == 1 ]; then
+if [ "$loop_disk" ]; then
   (cat <<EOF
 #!/bin/bash
 
