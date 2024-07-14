@@ -194,7 +194,7 @@ WantedBy=multi-user.target
 EOF
 ) | pct exec $id -- tee /etc/systemd/system/k3s-lxc.service
 (cat <<EOF
-export PATH="/var/lib/rancher/rke2/bin/:$PATH"
+export PATH="/var/lib/rancher/rke2/bin/:\$PATH"
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 export CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml
 
