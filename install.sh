@@ -61,6 +61,7 @@ default_bridge=vmbr40
 default_rancher=https://k8s.${default_domain}
 firewall=${firewall:-0}
 size=${size:-64}
+loop_disk_size=${loop_disk_size:-64}
 nameserver=${nameserver:-8.8.8.8}
 
 if [ -z "${token}" ]; then
@@ -119,6 +120,10 @@ if [ -z "${id}" ]; then
   id=${default_id}
 fi
 
+if [ -z "${loop_disk_storage}" ]; then
+  loop_disk_storage=${image_storage}
+fi
+
 cat > /etc/modules-load.d/docker.conf <<EOF
 aufs
 overlay
@@ -156,7 +161,7 @@ lxc.mount.auto: "proc:rw sys:rw"
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
 
-if [ $ceph == 1 ]; then
+if [ $loop_disk == 1 ]; then
   for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
   (cat <<EOF
 lxc.cgroup2.devices.allow: b 7:* rwm
@@ -172,7 +177,7 @@ lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
   done
-
+  pct set $id -mp0 local:$loop_disk_size,mp=/var/loop-disk,backup=1
   (cat <<EOF
 #!/bin/bash
 
