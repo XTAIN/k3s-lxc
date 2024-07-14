@@ -61,6 +61,7 @@ default_bridge=vmbr40
 default_rancher=https://k8s.${default_domain}
 firewall=${firewall:-0}
 size=${size:-64}
+data_size=${size:-16}
 loop_disk_size=${loop_disk_size:-64}
 nameserver=${nameserver:-8.8.8.8}
 
@@ -124,6 +125,10 @@ if [ -z "${loop_disk_storage}" ]; then
   loop_disk_storage=${image_storage}
 fi
 
+if [ -z "${data_storage}" ]; then
+  data_storage=${loop_disk_storage}
+fi
+
 cat > /etc/modules-load.d/docker.conf <<EOF
 aufs
 overlay
@@ -153,6 +158,7 @@ if pct status $id || qm status $id; then
 fi
 
 pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
+pct set $id -mp0 ${data_storage}:$data_size,mp=/data,backup=1
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
@@ -162,7 +168,7 @@ EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
 if [ "$loop_disk" ]; then
   for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
-  pct set $id -mp0 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
+  pct set $id -mp1 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
     (cat <<EOF
 lxc.cgroup2.devices.allow: b 7:* rwm
 lxc.cgroup2.devices.allow: c 10:237 rwm
