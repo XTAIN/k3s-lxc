@@ -160,10 +160,10 @@ lxc.cap.drop:
 lxc.mount.auto: "proc:rw sys:rw"
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
-
 if [ $loop_disk == 1 ]; then
   for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
-  (cat <<EOF
+  pct set $id -mp0 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
+    (cat <<EOF
 lxc.cgroup2.devices.allow: b 7:* rwm
 lxc.cgroup2.devices.allow: c 10:237 rwm
 lxc.mount.entry: /dev/loop-control dev/loop-control none bind,create=file 0 0
@@ -177,7 +177,20 @@ lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
   done
-  pct set $id -mp0 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
+fi
+
+pct set $id --net0 $network
+if [ "$nameserver" ]; then
+  pct set $id --nameserver $nameserver
+fi
+
+if [ "${network_internal}" ]; then
+  pct set $id --net1 $network_internal
+fi
+pct start $id
+
+
+if [ $loop_disk == 1 ]; then
   (cat <<EOF
 #!/bin/bash
 
@@ -286,16 +299,6 @@ EOF
   pct exec $id -- systemctl enable loop-disk.service
   pct exec $id -- systemctl start loop-disk.service
 fi
-
-pct set $id --net0 $network
-if [ "$nameserver" ]; then
-  pct set $id --nameserver $nameserver
-fi
-
-if [ "${network_internal}" ]; then
-  pct set $id --net1 $network_internal
-fi
-pct start $id
 
 pct exec $id -- mkdir -p /var/lib/rancher/k3s/server/manifests
 pct exec $id -- mkdir -p /etc/rancher/k3s
