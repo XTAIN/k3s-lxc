@@ -172,6 +172,29 @@ lxc.mount.entry = /dev/loop${i} dev/loop${i} none bind,create=file 0 0
 EOF
 ) | cat - >> /etc/pve/lxc/$id.conf
   done
+
+  (cat <<EOF
+EOF
+) | pct exec $id -- tee /usr/local/bin/loop-disk
+  pct exec $id -- chmod +x /usr/local/bin/loop-disk
+  (cat <<EOF
+[Unit]
+Description=Enshures loop-disk is mounted
+After=basic.target
+
+[Service]
+Restart=no
+Type=oneshot
+ExecStart=/usr/local/bin/loop-disk
+Environment=
+
+[Install]
+WantedBy=multi-user.target
+EOF
+) | pct exec $id -- tee /etc/systemd/system/loop-disk.service
+  pct exec $id -- systemctl daemon-reload
+  pct exec $id -- systemctl enable loop-disk.service
+  pct exec $id -- systemctl start loop-disk.service
 fi
 
 pct set $id --net0 $network
@@ -219,7 +242,7 @@ export CRI_CONFIG_FILE=/var/lib/rancher/rke2/agent/etc/crictl.yaml
 
 alias ctr="/var/lib/rancher/rke2/bin/ctr --address /run/k3s/containerd/containerd.sock"
 EOF
-) | pct exec $id -- tee /etc/bash.bashrc
+) | pct exec $id -- tee -a /etc/bash.bashrc
 pct exec $id -- systemctl daemon-reload
 pct exec $id -- systemctl enable k3s-lxc.service
 pct exec $id -- systemctl start k3s-lxc.service
