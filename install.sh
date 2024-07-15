@@ -162,6 +162,7 @@ pct set $id -mp0 ${data_storage}:$data_size,mp=/data,backup=1
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
+lxc.cgroup.devices.allow: a
 lxc.cap.drop: 
 lxc.mount.auto: "proc:rw sys:rw"
 EOF
@@ -170,6 +171,8 @@ if [ "$loop_disk" ]; then
   for i in {0..255}; do if [ -e /dev/loop$i ]; then continue; fi; mknod /dev/loop$i b 7 $i; chown --reference=/dev/loop0 /dev/loop$i; chmod --reference=/dev/loop0 /dev/loop$i; done
   pct set $id -mp1 ${loop_disk_storage}:$loop_disk_size,mp=/var/loop-disk,backup=1
     (cat <<EOF
+lxc.cgroup.devices.allow: b 7:* rwm
+lxc.cgroup.devices.allow: c 10:237 rwm
 lxc.cgroup2.devices.allow: b 7:* rwm
 lxc.cgroup2.devices.allow: c 10:237 rwm
 lxc.mount.entry: /dev/loop-control dev/loop-control none bind,create=file 0 0
