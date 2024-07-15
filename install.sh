@@ -138,6 +138,7 @@ ip_vs_wrr
 ip_vs_sh
 nf_conntrack
 br_netfilter
+iscsi_tcp
 rbd
 options nf_conntrack hashsize=196608
 EOF
