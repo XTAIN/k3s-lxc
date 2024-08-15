@@ -158,6 +158,10 @@ if pct status $id || qm status $id; then
    exit 1
 fi
 
+if [ ! -d /mnt/pve/cephfs/k8s/${cluster} ]; then
+  mkdir -p /mnt/pve/cephfs/k8s/${cluster}
+fi
+
 pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
 pct set $id -mp0 ${data_storage}:$data_size,mp=/data,backup=1 -mp1 /mnt/pve/cephfs/k8s/${cluster},mp=/shared
 (cat <<EOF
