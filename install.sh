@@ -159,7 +159,7 @@ if pct status $id || qm status $id; then
 fi
 
 pct create $id $image_storage:vztmpl/$image --cores ${cores} --memory ${memory} --swap ${swap} --rootfs ${storage}:${size} --hostname=$hostname --onboot 1
-pct set $id -mp0 ${data_storage}:$data_size,mp=/data,backup=1
+pct set $id -mp0 ${data_storage}:$data_size,mp=/data,backup=1 -mp1 /mnt/pve/cephfs/k8s/${cluster},mp=/shared
 (cat <<EOF
 lxc.apparmor.profile: unconfined
 lxc.cgroup2.devices.allow: a
@@ -197,6 +197,7 @@ fi
 if [ "${network_internal}" ]; then
   pct set $id --net1 $network_internal
 fi
+pct set $id --net2 "name=kubevip,firewall=${firewall},bridge=${bridge}"
 pct start $id
 
 
